@@ -2,7 +2,7 @@ defmodule ResxHTTP do
     @moduledoc """
       A producer to handle HTTP URIs.
 
-        ResxHTTP.open("https:example.com")
+        ResxHTTP.open("https://example.com/foo.csv")
 
       Add `ResxHTTP` to your list of resx producers.
 
@@ -12,6 +12,27 @@ defmodule ResxHTTP do
       ### Types
 
       MIME types are inferred from the content-type of the HTTP response.
+
+      ### Access
+
+      By default all HTTP resources can be opened. Optionally access can be
+      restricted by configuring the `:access` configuration option for the
+      application.
+
+        config :resx_http,
+            access: fn
+                request = %HTTPoison.Request{ url: "https://example.com/foo.csv" } ->
+                    %{ request | options: [{ :follow_redirect, true }|request.options] }
+                request = %HTTPoison.Request{ url: "https://example.com" <> _ } -> request
+                _ -> nil
+            end
+
+      The `:access` field should contain a callback function of type
+      `(HTTPoison.Request.t -> HTTPoison.Request.t | nil)` where the current
+      request is passed to the callback and either the request that should be made
+      is returned (this can be the same request or a new one) or `nil` to disallow.
+      Valid function formats are any callback variant, see `Callback` for more
+      information.
     """
     use Resx.Producer
 
