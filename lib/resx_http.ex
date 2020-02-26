@@ -1,10 +1,34 @@
 defmodule ResxHTTP do
+    @moduledoc """
+      A producer to handle HTTP URIs.
+
+        ResxHTTP.open("https:example.com")
+
+      Add `ResxHTTP` to your list of resx producers.
+
+        config :resx,
+            producers: [ResxHTTP]
+
+      ### Types
+
+      MIME types are inferred from the content-type of the HTTP response.
+    """
     use Resx.Producer
 
     alias Resx.Resource
     alias Resx.Resource.Content
     alias Resx.Resource.Reference
     alias Resx.Resource.Reference.Integrity
+
+    @type timestamp :: :server | :client
+    @type options :: [
+
+        method: HTTPoison.Request.method,
+        headers: HTTPoison.Request.headers,
+        body: HTTPoison.Request.body,
+        options: HTTPoison.Request.options,
+        timestamp: timestamp
+    ]
 
     defp to_request(%Reference{ repository: { request, headers } }, opts), do: { :ok, { update_request(request, opts), headers } }
     defp to_request(url, opts) when is_binary(url) do
@@ -56,7 +80,21 @@ defmodule ResxHTTP do
     @impl Resx.Producer
     def schemes(), do: ["https", "http"]
 
+    @doc """
+      Opens an HTTP resource.
+
+      By default a GET request is made, this can be changed by specifying the request
+      type using the `:method` option.
+
+      The `:timestamp` option allows for choosing between `:server` or `:client`
+      timestamps. By default the server timestamp is used, or whatever application
+      timestamp setting was given.
+
+        config :resx_http,
+            timestamp: :client
+    """
     @impl Resx.Producer
+    @spec open(Resx.ref, options) :: { :ok, resource :: Resource.t(Content.t) } | Resx.error(Resx.resource_error | Resx.reference_error)
     def open(reference, opts \\ []) do
         with { :request, repo = { :ok, { request, _ } } } <- { :request, to_request(reference, Keyword.merge([method: :get], opts)) },
              { :access, request = %HTTPoison.Request{} } <- { :access, access?(request) },
